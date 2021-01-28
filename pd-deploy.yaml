@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: k8s-pd
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+   matchLabels:
+     app: person-detection
+  template:
+   metadata:
+    labels:
+     app: person-detection
+   spec:
+    containers:
+    - name: person-detection
+      image: home-ss-as-master.com:5000/kube_app
+    hostNetwork: true
+    restartPolicy: Always
+

@@ -1,0 +1,64 @@
+FROM ubuntu:16.04
+USER root
+WORKDIR /app
+ARG MY_ROOT=/app
+ARG DEVICE=CPU_FP32
+ARG ONNXRUNTIME_REPO=https://github.com/microsoft/onnxruntime
+ARG ONNXRUNTIME_BRANCH=master
+
+ENV pattern="COMPONENTS=DEFAULTS"
+ENV replacement="COMPONENTS=intel-openvino-ie-sdk-ubuntu-xenial__x86_64;intel-openvino-ie-rt-cpu-ubuntu-xenial__x86_64;intel-openvino-ie-rt-gpu-ubuntu-xenial__x86_64;intel-openvino-ie-rt-vpu-ubuntu-xenial__x86_64;intel-openvino-ie-rt-hddl-ubuntu-xenial__x86_64;intel-openvino-model-optimizer__x86_64;intel-openvino-opencv-lib-ubuntu-xenial__x86_64"
+ENV LD_LIBRARY_PATH=/opt/miniconda/lib:/usr/lib:/usr/lib/x86_64-linux-gnu:$LD_LIBRARY_PATH
+ENV INTEL_OPENVINO_DIR=/opt/intel/openvino_2020.4.287
+ENV InferenceEngine_DIR=${INTEL_OPENVINO_DIR}/deployment_tools/inference_engine/share
+ENV IE_PLUGINS_PATH=${INTEL_OPENVINO_DIR}/deployment_tools/inference_engine/lib/intel64
+ENV ngraph_DIR=${INTEL_OPENVINO_DIR}/deployment_tools/ngraph/
+ENV LD_LIBRARY_PATH=/opt/intel/opencl:${INTEL_OPENVINO_DIR}/inference_engine/external/gna/lib:${INTEL_OPENVINO_DIR}/deployment_tools/inference_engine/external/mkltiny_lnx/lib:$INTEL_OPENVINO_DIR/deployment_tools/ngraph:${INTEL_OPENVINO_DIR}/deployment_tools/inference_engine/external/omp/lib:${INTEL_OPENVINO_DIR}/deployment_tools/inference_engine/external/tbb/lib:${IE_PLUGINS_PATH}:${LD_LIBRARY_PATH}
+ENV OpenCV_DIR=${INTEL_OPENVINO_DIR}/opencv/share/OpenCV
+ENV LD_LIBRARY_PATH=${INTEL_OPENVINO_DIR}/opencv/lib:${INTEL_OPENVINO_DIR}/opencv/share/OpenCV/3rdparty/lib:${LD_LIBRARY_PATH}
+ENV HDDL_INSTALL_DIR=${INTEL_OPENVINO_DIR}/deployment_tools/inference_engine/external/hddl
+ENV LD_LIBRARY_PATH=${INTEL_OPENVINO_DIR}/deployment_tools/inference_engine/external/hddl/lib:$LD_LIBRARY_PATH
+ENV LANG en_US.UTF-8
+ENV PATH /opt/cmake/bin:$PATH
+
+COPY l_openvino_*.tgz .
+RUN apt update && \
+    apt -y install zip x11-apps lsb-core wget cpio sudo libboost-python-dev libpng-dev zlib1g-dev git libnuma1 ocl-icd-libopencl1 clinfo libboost-filesystem1.58.0 libboost-thread1.58.0 protobuf-compiler libprotoc-dev autoconf automake libtool && \
+    locale-gen en_US.UTF-8 && update-locale LANG=en_US.UTF-8  && \
+    cd ${MY_ROOT} && \
+    tar -xzf l_openvino_toolkit*.tgz && \
+    rm -rf l_openvino_toolkit*.tgz && \
+    cd l_openvino_toolkit* && \
+    sed -i "s/$pattern/$replacement/" silent.cfg && \
+    sed -i 's/decline/accept/g' silent.cfg && \
+    ./install.sh -s silent.cfg && \
+    cd - && \
+    rm -rf l_openvino_toolkit*  && \
+    cd /opt/intel/openvino_2020.4.287/install_dependencies && ./install_openvino_dependencies.sh && dpkg -i *.deb
+
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y locales \
+    && sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen \
+    && dpkg-reconfigure --frontend=noninteractive locales \
+    && update-locale LANG=en_US.UTF-8
+ENV LANG en_US.UTF-8 
+ENV LC_ALL en_US.UTF-8
+ENV DISPLAY=:0
+RUN apt-get update && apt-get install -y software-properties-common && add-apt-repository ppa:deadsnakes/ppa && \
+    apt-get update && apt-get install -y python3.6 python3.6-dev python3-pip
+
+RUN ln -sfn /usr/bin/python3.6 /usr/bin/python3 && ln -sfn /usr/bin/python3 /usr/bin/python && ln -sfn /usr/bin/pip3 /usr/bin/pip
+
+RUN pip3 install monitors
+RUN pip3 install scikit-build
+RUN pip3 install -U numpy 
+RUN pip3 install opencv-python==3.4.7.28
+#RUN echo "source /opt/intel/openvino_2020.4.287/bin/setupvars.sh" > ~/.bashrc
+#SHELL ["source", "~/.bashrc"]
+COPY object_detection_demo_ssd_async.py ./ 
+COPY person-detection-retail-0013.bin ./
+COPY person-detection-retail-0013.xml ./
+COPY people.mp4 ./
+CMD [ "/bin/bash", "-c", "source /opt/intel/openvino_2020.4.287/bin/setupvars.sh && python3 -u ./object_detection_demo_ssd_async.py -i people.mp4 -m person-detection-retail-0013.xml" ]
+#CMD [ "python3", "-u", "./object_detection_demo_ssd_async.py", "-i", "people.mp4", "-m", "person-detection-retail-0013.xml" ]
+ 
