@@ -40,6 +40,7 @@ Troubleshooting:
 1. Make sure all the pods in all the namespaces are properly running on the clsuter
 
     Ex: All should be in running state
+   ```
       kubectl get pods --all-namespaces
       NAMESPACE     NAME                                        READY   STATUS    RESTARTS   AGE
       kube-system   coredns-f9fd979d6-7l928                     1/1     Running   10         84d
@@ -52,8 +53,8 @@ Troubleshooting:
       kube-system   kube-proxy-dsjvr                            1/1     Running   1          84d
       kube-system   kube-proxy-f78xm                            1/1     Running   3          84d
       kube-system   kube-scheduler-home-ss-as-master            1/1     Running   17         84d
-
-2. Fixing CoreDNS service Crash issue:
+```
+3. Fixing CoreDNS service Crash issue:
 
        1 . Add below DNS settings to sudo nano /etc/resolv.conf
              nameserver 8.8.8.8
